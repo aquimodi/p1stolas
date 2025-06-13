@@ -20,16 +20,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   excelParserMethod: 'javascript',
   theme: 'light',
   language: 'es',
-  authProvider: 'azure',
+  authProvider: 'local', // Cambiado a 'local' (eliminado Azure)
   demoMode: true, // Por defecto usamos datos de demo
   debugMode: false, // Modo debug desactivado por defecto
   aiProvider: DEFAULT_AI_PROVIDER,
-  azureSettings: {
-    tenantId: 'your-tenant-id',
-    clientId: 'your-client-id',
-    redirectUri: 'https://app.datacenter-manager.com/auth/callback',
-    useGraphApi: true
-  },
   automations: {
     emailAlerts: true,
     dailyReports: true,

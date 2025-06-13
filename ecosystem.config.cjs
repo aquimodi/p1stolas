@@ -27,7 +27,7 @@ module.exports = {
         DB_ENCRYPT: process.env.DB_ENCRYPT || 'true',
         MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
         LOG_LEVEL: process.env.LOG_LEVEL || 'info',
-        CORS_ORIGIN: process.env.CORS_ORIGIN || 'https://your-frontend-domain.com',
+        CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
         MAX_FILE_SIZE: process.env.MAX_FILE_SIZE || '10485760'
       },
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',

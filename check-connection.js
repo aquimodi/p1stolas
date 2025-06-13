@@ -22,6 +22,13 @@ function makeRequest(url, description) {
           try {
             const json = JSON.parse(data);
             console.log(`   Respuesta: ${json.message || json.status || 'OK'}`);
+            if (json.server && json.server.ip) {
+              console.log(`   Servidor: ${json.server.ip}:${json.server.port}`);
+            }
+            if (json.cors) {
+              console.log(`   CORS: ${json.cors.allowedOrigins || '*'}`);
+              console.log(`   Acceso externo: ${json.cors.externalAccess ? 'Habilitado' : 'Deshabilitado'}`);
+            }
           } catch (e) {
             console.log(`   Respuesta: ${data.substring(0, 100)}...`);
           }
@@ -65,6 +72,10 @@ async function checkConnectivity() {
     {
       url: 'http://localhost:3002/api/diagnostics/full',
       description: 'Diagnósticos completos'
+    },
+    {
+      url: 'http://localhost:3002/api/test-cors',
+      description: 'Test de CORS'
     }
   ];
 
@@ -81,6 +92,7 @@ async function checkConnectivity() {
   console.log(`   API Root: ${results[1] ? '✅' : '❌'}`);
   console.log(`   Frontend: ${results[2] ? '✅' : '❌'}`);
   console.log(`   Diagnósticos: ${results[3] ? '✅' : '❌'}`);
+  console.log(`   Test CORS: ${results[4] ? '✅' : '❌'}`);
   
   if (results.every(r => r)) {
     console.log('\n🎉 ¡Todas las conexiones funcionan correctamente en D:/inetpub/pistolas!');
@@ -93,6 +105,7 @@ async function checkConnectivity() {
       console.log('   - Revisar los logs del servidor: pm2 logs datacenter-api');
       console.log('   - Comprobar que el puerto 3002 no esté ocupado: netstat -an | findstr ":3002"');
       console.log('   - Verificar ubicación del proyecto: D:/inetpub/pistolas');
+      console.log('   - Comprobar variable de entorno IP_ADDRESS');
     } else if (!results[2]) {
       console.log('\n💡 Sugerencias para Frontend:');
       console.log('   - Verificar que npm run build se ejecutó correctamente');

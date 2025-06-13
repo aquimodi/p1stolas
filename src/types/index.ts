@@ -142,16 +142,10 @@ export interface AppSettings {
   excelParserMethod: 'ai' | 'javascript'; // Changed from 'mistral' to 'ai'
   theme: 'light' | 'dark';
   language: 'es' | 'en';
-  authProvider: 'azure' | 'local';
+  authProvider: 'local'; // Eliminado Azure, solo autenticación local
   demoMode: boolean;  // Modo de demostración (datos dummy vs reales)
   debugMode: boolean; // Modo de depuración para ver interacciones backend-frontend
   aiProvider: AIProvider; // New field for AI provider configuration
-  azureSettings: {
-    tenantId: string;
-    clientId: string;
-    redirectUri: string;
-    useGraphApi: boolean;
-  };
   automations: {
     emailAlerts: boolean;
     dailyReports: boolean;

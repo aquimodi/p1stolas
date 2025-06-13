@@ -126,7 +126,7 @@ export const apiService = {
         if (error.code === 'ECONNABORTED') {
           errorMessage = 'Connection timeout - server might be down or unreachable';
         } else if (error.code === 'ERR_NETWORK') {
-          errorMessage = 'Network error - please check your connection and ensure the API server is running on port 3002';
+          errorMessage = 'Network error - please check your connection and ensure the API server is running';
         } else if (error.response) {
           statusCode = error.response.status;
           errorMessage = `Server responded with status ${statusCode}: ${error.response.statusText}`;
@@ -346,7 +346,7 @@ export const apiService = {
     return handleResponse(response);
   },
   
-  // Auth
+  // Auth (simplified - no Azure)
   login: async (email: string, password: string) => {
     const response = await api.post('/auth/login', { email, password });
     return handleResponse(response);

@@ -86,16 +86,13 @@ const upload = multer({
   }
 });
 
-// CORS Configuration - Simplified and production-ready
+// CORS Configuration - Habilitado para acceso externo
 const corsOptions = {
   origin: function (origin, callback) {
     console.log('🔍 CORS check for origin:', origin);
     
-    // In development mode, allow all origins
-    if (NODE_ENV === 'development') {
-      console.log('🟢 CORS: Development mode - allowing all origins');
-      return callback(null, true);
-    }
+    // Get allowed origins from environment variable
+    const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['*'];
     
     // Always allow requests with no origin (Postman, mobile apps, etc.)
     if (!origin) {
@@ -103,10 +100,14 @@ const corsOptions = {
       return callback(null, true);
     }
     
-    // In production, check against allowed origins
-    const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['*'];
+    // If wildcard is set, allow all origins
+    if (allowedOrigins.includes('*')) {
+      console.log('🟢 CORS: Wildcard enabled - allowing all origins');
+      return callback(null, true);
+    }
     
-    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+    // Check against specific allowed origins
+    if (allowedOrigins.includes(origin)) {
       console.log('🟢 CORS: Origin allowed:', origin);
       return callback(null, true);
     }
@@ -141,10 +142,22 @@ const corsOptions = {
 // Use CORS with options
 app.use(cors(corsOptions));
 
-// Security middleware (but relaxed for development)
+// Security middleware (but relaxed for external access)
 app.use(helmet({ 
-  contentSecurityPolicy: NODE_ENV === 'production',
-  crossOriginEmbedderPolicy: NODE_ENV === 'production'
+  contentSecurityPolicy: NODE_ENV === 'production' ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https:"],
+      fontSrc: ["'self'", "https:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  } : false,
+  crossOriginEmbedderPolicy: false // Disable for external access
 }));
 
 app.use(compression());
@@ -185,7 +198,8 @@ app.get(['/api/health', '/health'], (req, res) => {
     },
     cors: {
       origin: req.headers.origin || 'none',
-      allowedOrigins: NODE_ENV === 'development' ? 'all (development mode)' : (process.env.CORS_ORIGIN || '*')
+      allowedOrigins: process.env.CORS_ORIGIN || '*',
+      externalAccessEnabled: true
     }
   };
   
@@ -200,9 +214,14 @@ app.get(['/api', '/'], (req, res) => {
     apiVersion: '1.0.2',
     environment: NODE_ENV,
     serverTime: new Date().toISOString(),
+    server: {
+      ip: IP_ADDRESS,
+      port: PORT
+    },
     cors: {
       configured: true,
-      mode: NODE_ENV === 'development' ? 'permissive' : 'restricted'
+      externalAccess: true,
+      allowedOrigins: process.env.CORS_ORIGIN || '*'
     },
     endpoints: {
       health: '/api/health',
@@ -221,10 +240,18 @@ app.get(['/api', '/'], (req, res) => {
 app.get('/api/test-cors', (req, res) => {
   console.log('🧪 CORS test from:', req.ip, 'origin:', req.headers.origin);
   res.json({
-    message: 'CORS test successful',
+    message: 'CORS test successful - External access enabled',
     origin: req.headers.origin || 'none',
     userAgent: req.headers['user-agent'],
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    server: {
+      ip: IP_ADDRESS,
+      port: PORT
+    },
+    corsConfig: {
+      allowedOrigins: process.env.CORS_ORIGIN || '*',
+      externalAccess: true
+    }
   });
 });
 
@@ -249,12 +276,12 @@ const server = app.listen(PORT, IP_ADDRESS, () => {
   console.log(`  🏥 Health: http://${IP_ADDRESS}:${PORT}/api/health`);
   console.log(`  🔍 Diagnostics: http://${IP_ADDRESS}:${PORT}/api/diagnostics/full`);
   console.log(`  🧪 CORS Test: http://${IP_ADDRESS}:${PORT}/api/test-cors`);
-  console.log(`  🌍 CORS: ${process.env.CORS_ORIGIN || '*'}`);
+  console.log(`  🌍 CORS: ${process.env.CORS_ORIGIN || '*'} (External access enabled)`);
   console.log(`  📂 Uploads: http://${IP_ADDRESS}:${PORT}/uploads`);
-  console.log(`  🔒 CORS Mode: ${NODE_ENV === 'development' ? 'PERMISSIVE (all origins allowed)' : 'RESTRICTED'}`);
+  console.log(`  🔒 External Access: ENABLED`);
   console.log(`  📁 Max File Size: ${(MAX_FILE_SIZE / 1024 / 1024).toFixed(1)}MB`);
   
-  logger.info(`Server running on port ${PORT} and IP ${IP_ADDRESS}`);
+  logger.info(`Server running on ${IP_ADDRESS}:${PORT} with external access enabled`);
 });
 
 // Handle server errors
