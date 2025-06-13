@@ -9,17 +9,13 @@ export default defineConfig(({ mode }) => {
   // Determine if we're in development mode
   const isDev = mode === 'development';
   
-  // Get API URL from environment
-  const apiUrl = env.VITE_API_URL || (isDev ? '/api' : 'https://your-backend-domain.com/api');
-  
-  // For development, use localhost backend
-  const apiBaseUrl = isDev ? 'http://localhost:3002' : null;
+  // Get API URL from environment - use IP_ADDRESS for production
+  const ipAddress = env.IP_ADDRESS || 'localhost';
+  const apiUrl = env.VITE_API_URL || (isDev ? '/api' : `http://${ipAddress}:3002/api`);
   
   console.log(`🔧 Vite Config [${mode.toUpperCase()}]:`);
+  console.log(`   - IP Address: ${ipAddress}`);
   console.log(`   - API URL: ${apiUrl}`);
-  if (isDev && apiBaseUrl) {
-    console.log(`   - Proxy target: ${apiBaseUrl}`);
-  }
   console.log(`   - Debug mode: ${env.VITE_DEBUG_MODE || 'false'}`);
   console.log(`   - Demo mode: ${env.VITE_DEMO_MODE || 'false'}`);
   
@@ -46,9 +42,9 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_DEMO_MODE': JSON.stringify(env.VITE_DEMO_MODE || 'false'),
     },
     
-    // Build configuration
+    // Build configuration for production
     build: {
-      // Generate sourcemaps for better debugging
+      // Generate sourcemaps for better debugging in development
       sourcemap: isDev ? true : false,
       // Optimize for production
       minify: isDev ? false : 'esbuild',
@@ -92,7 +88,7 @@ export default defineConfig(({ mode }) => {
       // Proxy configuration for development
       proxy: {
         '/api': {
-          target: apiBaseUrl,
+          target: `http://${ipAddress}:3002`,
           changeOrigin: true,
           secure: false, // Allow self-signed certificates
           ws: true, // Enable websocket proxying
@@ -104,7 +100,7 @@ export default defineConfig(({ mode }) => {
             proxy.on('error', (err, req, res) => {
               console.log('🔴 Proxy error:', err.message);
               console.log('  - Request:', req.method, req.url);
-              console.log('  - Target:', apiBaseUrl + req.url);
+              console.log('  - Target:', `http://${ipAddress}:3002${req.url}`);
               
               // Ensure response is sent if not already sent
               if (!res.headersSent) {
@@ -121,7 +117,7 @@ export default defineConfig(({ mode }) => {
             
             proxy.on('proxyReq', (proxyReq, req, _res) => {
               if (env.VITE_DEBUG_MODE === 'true') {
-                console.log('🔶 Proxying:', req.method, req.url, '→', apiBaseUrl + req.url);
+                console.log('🔶 Proxying:', req.method, req.url, '→', `http://${ipAddress}:3002${req.url}`);
               }
             });
             

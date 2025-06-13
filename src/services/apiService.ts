@@ -1,19 +1,31 @@
 import axios from 'axios';
 import { useSettingsStore } from '../store/settingsStore';
 
-// Get API base URL from environment variables with detailed logging
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Get API base URL from environment variables with IP_ADDRESS support
+const getApiBaseUrl = () => {
+  // In production, use IP_ADDRESS if available
+  if (import.meta.env.PROD && import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // In development, use the proxy
+  return import.meta.env.VITE_API_URL || '/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
 console.log('🔧 API Service Configuration:');
 console.log('  - API_BASE_URL:', API_BASE_URL);
 console.log('  - Environment Mode:', import.meta.env.MODE);
-console.log('  - All VITE env vars:', Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')));
+console.log('  - Production:', import.meta.env.PROD);
 
 // Create axios instance with detailed configuration
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
   }
 });
 
@@ -43,6 +55,11 @@ api.interceptors.request.use((config) => {
   if (settings.demoMode) {
     config.headers['X-Demo-Mode'] = 'true';
   }
+  
+  // Add CORS headers for cross-origin requests
+  config.headers['Access-Control-Allow-Origin'] = '*';
+  config.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+  config.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With';
   
   return config;
 }, (error) => {
