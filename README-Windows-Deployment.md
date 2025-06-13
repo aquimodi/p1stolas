@@ -1,20 +1,41 @@
-# Despliegue en Windows Server 2019 con NGINX
+# Despliegue en Windows Server 2019 con NGINX (Configuración Modular)
 
-Esta guía describe cómo desplegar DataCenter Manager en Windows Server 2019 usando NGINX como servidor web.
+Esta guía describe cómo desplegar DataCenter Manager en Windows Server 2019 usando NGINX con configuración modular que permite múltiples aplicaciones.
 
-## Requisitos Previos
+## Arquitectura de Configuración
 
-### Software Necesario
-- **Windows Server 2019** o superior
-- **Node.js** v18.0.0 o superior
-- **npm** v8.0.0 o superior
-- **PowerShell** 5.1 o superior (incluido en Windows Server 2019)
-- **NGINX** para Windows (se puede instalar automáticamente)
+### 🏗️ **Estructura Modular**
 
-### Permisos
-- Acceso de **Administrador** en el servidor
-- Permisos para modificar el firewall de Windows
-- Permisos para crear servicios de Windows
+```
+D:\nginx\
+├── nginx.exe                    # Ejecutable principal
+├── conf\
+│   ├── nginx.conf               # Configuración principal
+│   └── conf.d\                  # Configuraciones por aplicación
+│       ├── pistolas.conf        # Configuración de DataCenter Manager
+│       ├── otra-app.conf        # Otra aplicación (ejemplo)
+│       └── *.conf               # Más aplicaciones
+├── logs\
+│   ├── access.log
+│   └── error.log
+└── pistolas\                    # Aplicación DataCenter Manager
+    ├── dist\                    # Archivos construidos
+    ├── src\                     # Código fuente
+    ├── conf.d\                  # Configuraciones fuente
+    │   ├── pistolas.conf
+    │   └── ejemplo-otra-app.conf.disabled
+    ├── nginx.conf               # Configuración principal fuente
+    └── deploy-windows.ps1       # Script de despliegue
+```
+
+## Ventajas de esta Configuración
+
+✅ **Múltiples aplicaciones** en el mismo servidor NGINX  
+✅ **Configuración independiente** para cada aplicación  
+✅ **Escalabilidad** fácil para nuevas aplicaciones  
+✅ **Gestión centralizada** de logs y configuración global  
+✅ **CORS habilitado** para acceso desde fuera  
+✅ **Headers de seguridad** aplicados globalmente  
 
 ## Instalación Rápida
 
@@ -22,257 +43,267 @@ Esta guía describe cómo desplegar DataCenter Manager en Windows Server 2019 us
 
 ```powershell
 # Ejecutar PowerShell como Administrador
-
-# Verificar versión de Node.js
+# Verificar Node.js
 node --version
 npm --version
-
-# Si Node.js no está instalado, descargarlo desde https://nodejs.org
 ```
 
 ### 2. Ubicar la Aplicación
 
-La aplicación debe estar ubicada en: **`D:\nginx\pistolas`**
+La aplicación debe estar en: **`D:\nginx\pistolas`**
 
-```powershell
-# Verificar que la aplicación está en la ubicación correcta
-Get-ChildItem "D:\nginx\pistolas"
-```
-
-### 3. Desplegar la Aplicación
-
-```powershell
-# Navegar al directorio de la aplicación
-cd D:\nginx\pistolas
-
-# Ejecutar script de despliegue (instala NGINX automáticamente)
-.\deploy-windows.ps1 -InstallNginx -StartServices
-
-# O si NGINX ya está instalado
-.\deploy-windows.ps1 -StartServices
-```
-
-### 4. Verificar el Despliegue
-
-```powershell
-# Verificar que NGINX está ejecutándose
-Get-Process -Name "nginx"
-
-# Probar conectividad
-Invoke-WebRequest -Uri "http://localhost"
-```
-
-## Instalación Manual
-
-### 1. Instalar NGINX
-
-```powershell
-# Ejecutar desde D:\nginx\pistolas
-.\install-nginx.ps1
-```
-
-### 2. Configurar NGINX
-
-```powershell
-# La configuración se copia automáticamente desde D:\nginx\pistolas\nginx.conf
-# Verificar configuración
-D:\nginx\nginx.exe -t
-```
-
-### 3. Construir la Aplicación
+### 3. Desplegar
 
 ```powershell
 # Desde D:\nginx\pistolas
-npm install
-npm run build
+.\deploy-windows.ps1 -InstallNginx -StartServices
 ```
 
-### 4. Configurar Firewall
+## Configuración de Múltiples Aplicaciones
 
-```powershell
-# Permitir tráfico HTTP
-New-NetFirewallRule -DisplayName "DataCenter Manager HTTP" -Direction Inbound -Protocol TCP -LocalPort 80 -Action Allow
-
-# Permitir tráfico HTTPS (opcional)
-New-NetFirewallRule -DisplayName "DataCenter Manager HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow
-```
-
-### 5. Iniciar NGINX
-
-```powershell
-# Iniciar NGINX
-Start-Process -FilePath "D:\nginx\nginx.exe" -WorkingDirectory "D:\nginx"
-
-# Verificar que está ejecutándose
-Get-Process -Name "nginx"
-```
-
-## Configuración de Producción
-
-### Variables de Entorno
-
-Crear archivo `.env` en `D:\nginx\pistolas`:
-
-```env
-# Configuración para producción
-NODE_ENV=production
-IP_ADDRESS=192.168.1.100
-VITE_API_URL=http://192.168.1.100:3002/api
-VITE_DEBUG_MODE=false
-VITE_DEMO_MODE=false
-```
-
-### HTTPS (Opcional)
-
-Para habilitar HTTPS:
-
-1. Obtener certificados SSL
-2. Colocar certificados en `D:\nginx\ssl\`
-3. Descomentar la sección HTTPS en `nginx.conf`
-4. Reiniciar NGINX
-
-### Servicio de Windows
-
-Para ejecutar NGINX como servicio de Windows, instalar NSSM:
-
-```powershell
-# Descargar NSSM desde https://nssm.cc/download
-# Instalar NGINX como servicio
-nssm install nginx "D:\nginx\nginx.exe"
-nssm set nginx AppDirectory "D:\nginx"
-nssm start nginx
-```
-
-## Gestión del Servidor
-
-### Comandos Útiles
-
-```powershell
-# Reiniciar NGINX
-D:\nginx\nginx.exe -s reload
-
-# Detener NGINX
-D:\nginx\nginx.exe -s stop
-
-# Ver logs de error
-Get-Content "D:\nginx\logs\error.log" -Tail 50
-
-# Ver logs de acceso
-Get-Content "D:\nginx\logs\access.log" -Tail 50
-
-# Verificar configuración
-D:\nginx\nginx.exe -t
-```
-
-### Actualizar la Aplicación
-
-```powershell
-# Navegar al directorio de la aplicación
-cd D:\nginx\pistolas
-
-# Actualizar código (si usa Git)
-git pull
-
-# Reinstalar dependencias si es necesario
-npm install
-
-# Reconstruir
-npm run build
-
-# Reiniciar NGINX
-D:\nginx\nginx.exe -s reload
-```
-
-### Monitoreo
-
-```powershell
-# Verificar estado del servicio
-Get-Process -Name "nginx"
-
-# Verificar conectividad
-Test-NetConnection -ComputerName localhost -Port 80
-
-# Verificar logs en tiempo real
-Get-Content "D:\nginx\logs\access.log" -Wait
-```
-
-## Solución de Problemas
-
-### NGINX no inicia
-
-```powershell
-# Verificar configuración
-D:\nginx\nginx.exe -t
-
-# Verificar logs
-Get-Content "D:\nginx\logs\error.log"
-
-# Verificar que el puerto no está ocupado
-netstat -an | findstr ":80"
-```
-
-### Aplicación no carga
-
-1. Verificar que los archivos están en `D:\nginx\pistolas\dist`
-2. Verificar permisos de archivos
-3. Revisar logs de NGINX
-4. Verificar configuración de firewall
-
-### Problemas de CORS
-
-Si hay problemas de CORS, verificar la configuración en `nginx.conf`:
+### Método 1: Diferentes Dominios/Subdominios
 
 ```nginx
-add_header Access-Control-Allow-Origin "*" always;
-add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always;
+# En D:\nginx\conf\conf.d\app1.conf
+server {
+    listen 80;
+    server_name app1.tu-dominio.com;
+    root D:/nginx/app1/dist;
+    # ... resto de configuración
+}
+
+# En D:\nginx\conf\conf.d\app2.conf
+server {
+    listen 80;
+    server_name app2.tu-dominio.com;
+    root D:/nginx/app2/dist;
+    # ... resto de configuración
+}
 ```
 
-## Estructura de Archivos
+### Método 2: Diferentes Puertos
 
+```nginx
+# En D:\nginx\conf\conf.d\app1.conf
+server {
+    listen 80;
+    server_name localhost;
+    root D:/nginx/app1/dist;
+    # ... resto de configuración
+}
+
+# En D:\nginx\conf\conf.d\app2.conf
+server {
+    listen 8080;
+    server_name localhost;
+    root D:/nginx/app2/dist;
+    # ... resto de configuración
+}
 ```
-D:\
-├── nginx\
-│   ├── conf\
-│   │   └── nginx.conf
-│   ├── logs\
-│   │   ├── access.log
-│   │   └── error.log
-│   ├── nginx.exe
-│   └── pistolas\
-│       ├── dist\
-│       │   ├── index.html
-│       │   ├── assets\
-│       │   └── ...
-│       ├── src\
-│       ├── package.json
-│       ├── nginx.conf
-│       └── deploy-windows.ps1
+
+### Método 3: Diferentes Rutas
+
+```nginx
+# En D:\nginx\conf\conf.d\apps.conf
+server {
+    listen 80;
+    server_name localhost;
+    
+    location /app1/ {
+        alias D:/nginx/app1/dist/;
+        try_files $uri $uri/ /app1/index.html;
+    }
+    
+    location /app2/ {
+        alias D:/nginx/app2/dist/;
+        try_files $uri $uri/ /app2/index.html;
+    }
+}
+```
+
+## Gestión de Aplicaciones
+
+### Añadir Nueva Aplicación
+
+1. **Crear configuración:**
+```powershell
+# Crear D:\nginx\conf\conf.d\nueva-app.conf
+```
+
+2. **Configurar la aplicación:**
+```nginx
+server {
+    listen 8081;  # Puerto diferente
+    server_name localhost;
+    root D:/nginx/nueva-app/dist;
+    
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+    
+    location /health {
+        return 200 "nueva-app-healthy\n";
+        add_header Content-Type text/plain;
+    }
+}
+```
+
+3. **Recargar NGINX:**
+```powershell
+D:\nginx\nginx.exe -s reload
+```
+
+### Comandos de Gestión
+
+```powershell
+# Verificar configuración
+D:\nginx\nginx.exe -t
+
+# Recargar configuración (sin interrumpir servicio)
+D:\nginx\nginx.exe -s reload
+
+# Reiniciar NGINX
+D:\nginx\nginx.exe -s stop
+Start-Process -FilePath "D:\nginx\nginx.exe" -WorkingDirectory "D:\nginx"
+
+# Ver logs
+Get-Content "D:\nginx\logs\error.log" -Tail 50
+Get-Content "D:\nginx\logs\access.log" -Tail 50
 ```
 
 ## URLs de Acceso
 
-- **Aplicación principal**: `http://tu-servidor`
-- **Health check**: `http://tu-servidor/health`
-- **Archivos estáticos**: `http://tu-servidor/assets/`
+Con la configuración actual:
 
-## Seguridad
+- **DataCenter Manager**: `http://tu-servidor/` o `http://tu-servidor/health`
+- **NGINX Status**: `http://tu-servidor/nginx-health`
+- **Nuevas aplicaciones**: Según configuración (puerto/dominio)
 
-### Recomendaciones
+## Configuración de Firewall
 
-1. **Firewall**: Configurar reglas específicas para los puertos necesarios
-2. **HTTPS**: Implementar certificados SSL en producción
-3. **Actualizaciones**: Mantener NGINX y Node.js actualizados
-4. **Logs**: Monitorear logs regularmente
-5. **Backups**: Realizar copias de seguridad de la configuración
+```powershell
+# Permitir puertos adicionales para nuevas aplicaciones
+New-NetFirewallRule -DisplayName "App Puerto 8080" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow
+New-NetFirewallRule -DisplayName "App Puerto 8081" -Direction Inbound -Protocol TCP -LocalPort 8081 -Action Allow
+```
 
-### Headers de Seguridad
+## Configuración HTTPS
 
-La configuración incluye headers de seguridad básicos:
+Para habilitar HTTPS en múltiples aplicaciones:
 
-- `X-Frame-Options`
-- `X-XSS-Protection`
-- `X-Content-Type-Options`
-- `Content-Security-Policy`
+1. **Obtener certificados SSL** para cada dominio
+2. **Colocar certificados** en `D:\nginx\ssl\`
+3. **Configurar cada aplicación:**
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name app1.tu-dominio.com;
+    
+    ssl_certificate D:/nginx/ssl/app1.crt;
+    ssl_certificate_key D:/nginx/ssl/app1.key;
+    
+    root D:/nginx/app1/dist;
+    # ... resto de configuración
+}
+```
+
+## Monitoreo y Logs
+
+### Logs Centralizados
+
+Todos los logs se almacenan en `D:\nginx\logs\`:
+- `access.log`: Todas las peticiones HTTP
+- `error.log`: Errores de todas las aplicaciones
+
+### Health Checks
+
+- **Global**: `http://tu-servidor/nginx-health`
+- **Por aplicación**: `http://tu-servidor/health` (pistolas)
+
+### Monitoreo de Procesos
+
+```powershell
+# Ver procesos NGINX
+Get-Process -Name "nginx"
+
+# Verificar puertos en uso
+netstat -an | findstr ":80"
+netstat -an | findstr ":8080"
+```
+
+## Solución de Problemas
+
+### Conflictos de Puerto
+
+```powershell
+# Verificar qué proceso usa un puerto
+netstat -ano | findstr ":80"
+
+# Cambiar puerto en configuración si hay conflicto
+# Editar D:\nginx\conf\conf.d\app.conf
+```
+
+### Problemas de Configuración
+
+```powershell
+# Verificar sintaxis
+D:\nginx\nginx.exe -t
+
+# Ver errores específicos
+Get-Content "D:\nginx\logs\error.log" -Tail 20
+```
+
+### Aplicación No Carga
+
+1. Verificar que `dist/` existe en el directorio de la aplicación
+2. Verificar permisos de archivos
+3. Revisar configuración del `server_name`
+4. Comprobar que el puerto no está ocupado
+
+## Ejemplos de Configuración
+
+### Aplicación React con API Backend
+
+```nginx
+server {
+    listen 8080;
+    server_name localhost;
+    root D:/nginx/mi-app/dist;
+    
+    # Servir archivos estáticos
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # Proxy para API
+    location /api/ {
+        proxy_pass http://localhost:3000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+### Aplicación con Autenticación
+
+```nginx
+server {
+    listen 8081;
+    server_name app-segura.local;
+    root D:/nginx/app-segura/dist;
+    
+    # Configuración de seguridad adicional
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'" always;
+    
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
 
 ## Contacto
 

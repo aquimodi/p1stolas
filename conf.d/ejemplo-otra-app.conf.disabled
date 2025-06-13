@@ -1,0 +1,40 @@
+# Ejemplo de configuración para otra aplicación
+# Para activar: renombrar a ejemplo-otra-app.conf
+# Ubicación: D:\nginx\conf\conf.d\ejemplo-otra-app.conf
+
+server {
+    listen 80;
+    listen [::]:80;
+    
+    # Usar un server_name diferente o puerto diferente
+    server_name otra-app.local;
+    # O usar un puerto diferente:
+    # listen 8080;
+    # server_name localhost;
+    
+    # Directorio raíz de la otra aplicación
+    root D:/nginx/otra-app/dist;
+    index index.html;
+    
+    # Configuración específica para esta aplicación
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # Health check específico
+    location /health {
+        access_log off;
+        return 200 "otra-app-healthy\n";
+        add_header Content-Type text/plain;
+    }
+    
+    # API proxy específico (si es necesario)
+    location /api/ {
+        proxy_pass http://localhost:3003/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
