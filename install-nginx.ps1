@@ -2,7 +2,7 @@
 # Ejecutar como Administrador
 
 param(
-    [string]$InstallPath = "C:\nginx",
+    [string]$InstallPath = "D:\nginx",
     [string]$Version = "1.24.0",
     [switch]$CreateService = $true
 )

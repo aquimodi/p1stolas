@@ -30,11 +30,20 @@ npm --version
 # Si Node.js no está instalado, descargarlo desde https://nodejs.org
 ```
 
-### 2. Desplegar la Aplicación
+### 2. Ubicar la Aplicación
+
+La aplicación debe estar ubicada en: **`D:\nginx\pistolas`**
 
 ```powershell
-# Navegar al directorio del proyecto
-cd C:\ruta\al\proyecto\datacenter-manager
+# Verificar que la aplicación está en la ubicación correcta
+Get-ChildItem "D:\nginx\pistolas"
+```
+
+### 3. Desplegar la Aplicación
+
+```powershell
+# Navegar al directorio de la aplicación
+cd D:\nginx\pistolas
 
 # Ejecutar script de despliegue (instala NGINX automáticamente)
 .\deploy-windows.ps1 -InstallNginx -StartServices
@@ -43,7 +52,7 @@ cd C:\ruta\al\proyecto\datacenter-manager
 .\deploy-windows.ps1 -StartServices
 ```
 
-### 3. Verificar el Despliegue
+### 4. Verificar el Despliegue
 
 ```powershell
 # Verificar que NGINX está ejecutándose
@@ -58,44 +67,27 @@ Invoke-WebRequest -Uri "http://localhost"
 ### 1. Instalar NGINX
 
 ```powershell
-# Crear directorio para NGINX
-New-Item -ItemType Directory -Path "C:\nginx" -Force
-
-# Descargar NGINX para Windows desde http://nginx.org/en/download.html
-# Extraer en C:\nginx
+# Ejecutar desde D:\nginx\pistolas
+.\install-nginx.ps1
 ```
 
 ### 2. Configurar NGINX
 
 ```powershell
-# Copiar configuración personalizada
-Copy-Item -Path ".\nginx.conf" -Destination "C:\nginx\conf\nginx.conf" -Force
-
+# La configuración se copia automáticamente desde D:\nginx\pistolas\nginx.conf
 # Verificar configuración
-C:\nginx\nginx.exe -t
+D:\nginx\nginx.exe -t
 ```
 
 ### 3. Construir la Aplicación
 
 ```powershell
-# Instalar dependencias
+# Desde D:\nginx\pistolas
 npm install
-
-# Construir para producción
 npm run build
 ```
 
-### 4. Copiar Archivos
-
-```powershell
-# Crear directorio web
-New-Item -ItemType Directory -Path "C:\inetpub\datacenter-manager" -Force
-
-# Copiar archivos construidos
-Copy-Item -Path "dist" -Destination "C:\inetpub\datacenter-manager" -Recurse -Force
-```
-
-### 5. Configurar Firewall
+### 4. Configurar Firewall
 
 ```powershell
 # Permitir tráfico HTTP
@@ -105,11 +97,11 @@ New-NetFirewallRule -DisplayName "DataCenter Manager HTTP" -Direction Inbound -P
 New-NetFirewallRule -DisplayName "DataCenter Manager HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow
 ```
 
-### 6. Iniciar NGINX
+### 5. Iniciar NGINX
 
 ```powershell
 # Iniciar NGINX
-Start-Process -FilePath "C:\nginx\nginx.exe" -WorkingDirectory "C:\nginx"
+Start-Process -FilePath "D:\nginx\nginx.exe" -WorkingDirectory "D:\nginx"
 
 # Verificar que está ejecutándose
 Get-Process -Name "nginx"
@@ -119,12 +111,13 @@ Get-Process -Name "nginx"
 
 ### Variables de Entorno
 
-Crear archivo `.env` en el directorio raíz:
+Crear archivo `.env` en `D:\nginx\pistolas`:
 
 ```env
 # Configuración para producción
 NODE_ENV=production
-VITE_API_URL=http://tu-servidor-api:3002/api
+IP_ADDRESS=192.168.1.100
+VITE_API_URL=http://192.168.1.100:3002/api
 VITE_DEBUG_MODE=false
 VITE_DEMO_MODE=false
 ```
@@ -134,7 +127,7 @@ VITE_DEMO_MODE=false
 Para habilitar HTTPS:
 
 1. Obtener certificados SSL
-2. Colocar certificados en `C:\nginx\ssl\`
+2. Colocar certificados en `D:\nginx\ssl\`
 3. Descomentar la sección HTTPS en `nginx.conf`
 4. Reiniciar NGINX
 
@@ -145,8 +138,8 @@ Para ejecutar NGINX como servicio de Windows, instalar NSSM:
 ```powershell
 # Descargar NSSM desde https://nssm.cc/download
 # Instalar NGINX como servicio
-nssm install nginx "C:\nginx\nginx.exe"
-nssm set nginx AppDirectory "C:\nginx"
+nssm install nginx "D:\nginx\nginx.exe"
+nssm set nginx AppDirectory "D:\nginx"
 nssm start nginx
 ```
 
@@ -156,26 +149,26 @@ nssm start nginx
 
 ```powershell
 # Reiniciar NGINX
-C:\nginx\nginx.exe -s reload
+D:\nginx\nginx.exe -s reload
 
 # Detener NGINX
-C:\nginx\nginx.exe -s stop
+D:\nginx\nginx.exe -s stop
 
 # Ver logs de error
-Get-Content "C:\nginx\logs\error.log" -Tail 50
+Get-Content "D:\nginx\logs\error.log" -Tail 50
 
 # Ver logs de acceso
-Get-Content "C:\nginx\logs\access.log" -Tail 50
+Get-Content "D:\nginx\logs\access.log" -Tail 50
 
 # Verificar configuración
-C:\nginx\nginx.exe -t
+D:\nginx\nginx.exe -t
 ```
 
 ### Actualizar la Aplicación
 
 ```powershell
-# Navegar al directorio del proyecto
-cd C:\ruta\al\proyecto\datacenter-manager
+# Navegar al directorio de la aplicación
+cd D:\nginx\pistolas
 
 # Actualizar código (si usa Git)
 git pull
@@ -186,11 +179,8 @@ npm install
 # Reconstruir
 npm run build
 
-# Copiar archivos actualizados
-Copy-Item -Path "dist\*" -Destination "C:\inetpub\datacenter-manager\dist" -Recurse -Force
-
 # Reiniciar NGINX
-C:\nginx\nginx.exe -s reload
+D:\nginx\nginx.exe -s reload
 ```
 
 ### Monitoreo
@@ -203,7 +193,7 @@ Get-Process -Name "nginx"
 Test-NetConnection -ComputerName localhost -Port 80
 
 # Verificar logs en tiempo real
-Get-Content "C:\nginx\logs\access.log" -Wait
+Get-Content "D:\nginx\logs\access.log" -Wait
 ```
 
 ## Solución de Problemas
@@ -212,10 +202,10 @@ Get-Content "C:\nginx\logs\access.log" -Wait
 
 ```powershell
 # Verificar configuración
-C:\nginx\nginx.exe -t
+D:\nginx\nginx.exe -t
 
 # Verificar logs
-Get-Content "C:\nginx\logs\error.log"
+Get-Content "D:\nginx\logs\error.log"
 
 # Verificar que el puerto no está ocupado
 netstat -an | findstr ":80"
@@ -223,7 +213,7 @@ netstat -an | findstr ":80"
 
 ### Aplicación no carga
 
-1. Verificar que los archivos están en `C:\inetpub\datacenter-manager\dist`
+1. Verificar que los archivos están en `D:\nginx\pistolas\dist`
 2. Verificar permisos de archivos
 3. Revisar logs de NGINX
 4. Verificar configuración de firewall
@@ -240,20 +230,23 @@ add_header Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" always
 ## Estructura de Archivos
 
 ```
-C:\
+D:\
 ├── nginx\
 │   ├── conf\
 │   │   └── nginx.conf
 │   ├── logs\
 │   │   ├── access.log
 │   │   └── error.log
-│   └── nginx.exe
-└── inetpub\
-    └── datacenter-manager\
-        └── dist\
-            ├── index.html
-            ├── assets\
-            └── ...
+│   ├── nginx.exe
+│   └── pistolas\
+│       ├── dist\
+│       │   ├── index.html
+│       │   ├── assets\
+│       │   └── ...
+│       ├── src\
+│       ├── package.json
+│       ├── nginx.conf
+│       └── deploy-windows.ps1
 ```
 
 ## URLs de Acceso

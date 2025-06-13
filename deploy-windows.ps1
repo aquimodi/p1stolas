@@ -2,8 +2,8 @@
 # Ejecutar como Administrador
 
 param(
-    [string]$NginxPath = "C:\nginx",
-    [string]$WebRoot = "C:\inetpub\datacenter-manager",
+    [string]$NginxPath = "D:\nginx",
+    [string]$WebRoot = "D:\nginx\pistolas",
     [switch]$InstallNginx = $false,
     [switch]$StartServices = $true
 )
@@ -61,27 +61,32 @@ if (-not (Test-Path "$NginxPath\nginx.exe")) {
     exit 1
 }
 
-# 3. Crear directorio web
-Write-Host "Configurando directorio web..." -ForegroundColor Yellow
+# 3. Verificar que el directorio de la aplicación existe
 if (-not (Test-Path $WebRoot)) {
-    New-Item -ItemType Directory -Path $WebRoot -Force
+    Write-Error "El directorio de la aplicación no existe: $WebRoot"
+    Write-Host "Asegúrese de que la aplicación esté ubicada en: $WebRoot" -ForegroundColor Yellow
+    exit 1
 }
 
 # 4. Copiar archivos de configuración de NGINX
 Write-Host "Configurando NGINX..." -ForegroundColor Yellow
-$configSource = ".\nginx.conf"
+$configSource = "$WebRoot\nginx.conf"
 $configDest = "$NginxPath\conf\nginx.conf"
 
 if (Test-Path $configSource) {
     Copy-Item -Path $configSource -Destination $configDest -Force
     Write-Host "Configuración de NGINX actualizada" -ForegroundColor Green
 } else {
-    Write-Warning "Archivo nginx.conf no encontrado en el directorio actual"
+    Write-Warning "Archivo nginx.conf no encontrado en $WebRoot"
 }
 
-# 5. Construir la aplicación
-Write-Host "Construyendo la aplicación..." -ForegroundColor Yellow
-if (Test-Path "package.json") {
+# 5. Verificar que existe la carpeta dist
+if (-not (Test-Path "$WebRoot\dist")) {
+    Write-Host "Construyendo la aplicación..." -ForegroundColor Yellow
+    
+    # Cambiar al directorio de la aplicación
+    Push-Location $WebRoot
+    
     try {
         # Instalar dependencias si no existen
         if (-not (Test-Path "node_modules")) {
@@ -97,35 +102,23 @@ if (Test-Path "package.json") {
             Write-Host "Build completado exitosamente" -ForegroundColor Green
         } else {
             Write-Error "Error: No se generó la carpeta dist"
+            Pop-Location
             exit 1
         }
     }
     catch {
         Write-Error "Error durante el build: $($_.Exception.Message)"
+        Pop-Location
         exit 1
     }
-} else {
-    Write-Error "package.json no encontrado. Ejecute este script desde el directorio raíz del proyecto."
-    exit 1
-}
-
-# 6. Copiar archivos construidos
-Write-Host "Copiando archivos al servidor web..." -ForegroundColor Yellow
-if (Test-Path "dist") {
-    # Limpiar directorio de destino
-    if (Test-Path "$WebRoot\dist") {
-        Remove-Item -Path "$WebRoot\dist" -Recurse -Force
+    finally {
+        Pop-Location
     }
-    
-    # Copiar archivos
-    Copy-Item -Path "dist" -Destination $WebRoot -Recurse -Force
-    Write-Host "Archivos copiados a $WebRoot\dist" -ForegroundColor Green
 } else {
-    Write-Error "Directorio dist no encontrado"
-    exit 1
+    Write-Host "La carpeta dist ya existe en $WebRoot\dist" -ForegroundColor Green
 }
 
-# 7. Configurar firewall
+# 6. Configurar firewall
 Write-Host "Configurando firewall..." -ForegroundColor Yellow
 try {
     # Permitir HTTP (puerto 80)
@@ -140,7 +133,7 @@ catch {
     Write-Warning "No se pudieron configurar las reglas de firewall automáticamente"
 }
 
-# 8. Crear servicio de Windows para NGINX
+# 7. Crear servicio de Windows para NGINX
 Write-Host "Configurando servicio de NGINX..." -ForegroundColor Yellow
 $serviceName = "nginx"
 $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
@@ -157,7 +150,7 @@ if ($service) {
     Write-Host "nssm install nginx `"$NginxPath\nginx.exe`"" -ForegroundColor Cyan
 }
 
-# 9. Iniciar NGINX
+# 8. Iniciar NGINX
 if ($StartServices) {
     Write-Host "Iniciando NGINX..." -ForegroundColor Yellow
     
@@ -189,9 +182,10 @@ if ($StartServices) {
     }
 }
 
-# 10. Mostrar información final
+# 9. Mostrar información final
 Write-Host "`n=== Despliegue Completado ===" -ForegroundColor Green
-Write-Host "Aplicación desplegada en: $WebRoot\dist" -ForegroundColor White
+Write-Host "Aplicación ubicada en: $WebRoot" -ForegroundColor White
+Write-Host "Archivos web servidos desde: $WebRoot\dist" -ForegroundColor White
 Write-Host "Configuración NGINX: $NginxPath\conf\nginx.conf" -ForegroundColor White
 Write-Host "URL de acceso: http://localhost" -ForegroundColor White
 Write-Host "`nComandos útiles:" -ForegroundColor Yellow
@@ -199,7 +193,7 @@ Write-Host "  Reiniciar NGINX: $NginxPath\nginx.exe -s reload" -ForegroundColor 
 Write-Host "  Detener NGINX: $NginxPath\nginx.exe -s stop" -ForegroundColor Cyan
 Write-Host "  Ver logs: Get-Content $NginxPath\logs\error.log -Tail 50" -ForegroundColor Cyan
 
-# 11. Verificar conectividad
+# 10. Verificar conectividad
 Write-Host "`nVerificando conectividad..." -ForegroundColor Yellow
 try {
     $response = Invoke-WebRequest -Uri "http://localhost/health" -TimeoutSec 10 -ErrorAction Stop
